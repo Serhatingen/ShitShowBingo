@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Eren Bingo - Host</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body class="centered" data-mode="host">
+  <div id="app">
+    <div class="board-wrap">
+      <div class="board-shell">
+        <div id="boardGrid" class="board-grid"></div>
+      </div>
+    </div>
+    <aside class="sidebar">
+      <section class="panel stack">
+        <h2>Host Paneli</h2>
+        <div class="status-row">
+          <span class="badge warn" id="statusBadge">Bağlantı bekleniyor</span>
+          <span class="badge">Oda: <strong id="roomCode">-</strong></span>
+        </div>
+        <label class="stack">
+          <span class="small">Oda kodu</span>
+          <input id="roomInput" type="text" placeholder="anaoda">
+        </label>
+        <label class="stack">
+          <span class="small">Host anahtarı</span>
+          <input id="hostKey" type="password" placeholder="HOST_KEY">
+        </label>
+        <div class="inline">
+          <button id="joinBtn">Host olarak bağlan</button>
+          <button id="resetBtn" class="danger">Odayı sıfırla</button>
+        </div>
+      </section>
+
+      <section class="panel stack">
+        <h3>İzleyici linki</h3>
+        <div id="viewerLink" class="link-box mono">-</div>
+        <p class="small">Bu linki yayıncı paylaşır. İzleyici tarafta kurulum yok; çıtır çıtır tarayıcı yeter.</p>
+      </section>
+
+      <section class="panel stack">
+        <div class="status-row"><h3>Bekleyen claim</h3><button id="rejectBtn" class="warn">Reddet</button></div>
+        <div id="pendingBox"></div>
+        <p class="small">Host, claim gelen kutunun üstüne tıklayarak onaylar.</p>
+      </section>
+
+      <section class="panel stack">
+        <div class="status-row"><h3>Durum</h3><span class="badge">Onaylı kutu: <strong id="confirmedCount">0</strong></span></div>
+        <div class="status-row"><span class="small">Tamamlanan çizgi</span><strong id="linesCount">0</strong></div>
+        <div id="bingoBanner" class="bingo-banner" style="display:none"></div>
+      </section>
+
+      <section class="panel stack">
+        <h3>Son hareketler</h3>
+        <ul id="historyList" class="history-list"></ul>
+      </section>
+    </aside>
+  </div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="/config.js"></script>
+  <script src="/app.js"></script>
+</body>
+</html>
