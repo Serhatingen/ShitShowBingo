@@ -7,8 +7,6 @@ services:
     startCommand: npm start
     autoDeploy: true
     envVars:
-      - key: HOST_KEY
-        sync: false
       - key: DEFAULT_ROOM
         value: anaoda
       - key: CLAIM_TTL_MS

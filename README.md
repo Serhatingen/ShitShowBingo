@@ -70,3 +70,9 @@ npm start
 ## Teknik not
 
 State şu anda bellek içinde tutuluyor. Render yeniden başlarsa oda sıfırlanır. İlk sürüm için bu normaldir. Kalıcılık istenirse sonraki aşamada Redis veya Postgres eklenebilir.
+
+
+## v29 notu
+- HOST_KEY ortam değişkeni artık zorunlu değil.
+- Her yayın oturumunda host, oda kodunu ve host anahtarını host ekranından kendisi belirler.
+- Viewer yalnızca host tarafından açılmış odalara girebilir.

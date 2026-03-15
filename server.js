@@ -9,7 +9,6 @@ const __dirname = path.dirname(__filename);
 
 const PORT = process.env.PORT || 3000;
 const DEFAULT_ROOM = normalizeRoom(process.env.DEFAULT_ROOM || 'anaoda');
-const HOST_KEY = process.env.HOST_KEY || 'degistir-bunu';
 const CLAIM_TTL_MS = Math.max(3000, Number(process.env.CLAIM_TTL_MS || 10000));
 
 const app = express();
@@ -58,9 +57,11 @@ function normalizeRoom(room) {
 function createRoomState(roomId) {
   return {
     roomId,
+    hostKey: null,
     confirmedTiles: [],
     pendingClaim: null,
     history: [],
+    bingoEvents: [],
     updatedAt: Date.now()
   };
 }
@@ -69,6 +70,10 @@ function getRoom(roomId) {
   const id = normalizeRoom(roomId);
   if (!rooms.has(id)) rooms.set(id, createRoomState(id));
   return rooms.get(id);
+}
+
+function hasRoom(roomId) {
+  return rooms.has(normalizeRoom(roomId));
 }
 
 function getWinningLines(confirmedTiles) {
@@ -87,11 +92,13 @@ function roomSnapshot(room) {
   }
   return {
     roomId: room.roomId,
+    roomExists: true,
     tiles,
     confirmedTiles: room.confirmedTiles,
     pendingClaim: pending,
     winningLines: getWinningLines(room.confirmedTiles),
-    history: room.history.slice(-8)
+    history: room.history.slice(-12),
+    bingoEvents: room.bingoEvents.slice(0, 10)
   };
 }
 
@@ -100,13 +107,18 @@ function emitRoomState(roomId) {
   io.to(`room:${roomId}`).emit('room:state', roomSnapshot(room));
 }
 
+function pushHistory(room, item) {
+  room.history.push(item);
+  if (room.history.length > 80) room.history = room.history.slice(-80);
+}
+
 function clearExpiredClaim(roomId) {
   const room = getRoom(roomId);
   if (!room.pendingClaim) return;
   if (room.pendingClaim.expiresAt > Date.now()) return;
   const expired = room.pendingClaim;
   room.pendingClaim = null;
-  room.history.push({
+  pushHistory(room, {
     type: 'expired',
     tileId: expired.tileId,
     tileLabel: expired.tileLabel,
@@ -146,18 +158,40 @@ io.on('connection', socket => {
   socket.on('room:join', payload => {
     const roomId = normalizeRoom(payload?.room);
     const role = payload?.role === 'host' ? 'host' : 'viewer';
-    const viewerName = String(payload?.viewerName || 'İzleyici').slice(0, 30);
-    const hostKey = String(payload?.hostKey || '');
+    const viewerName = String(payload?.viewerName || '').trim().slice(0, 30);
+    const hostKey = String(payload?.hostKey || '').trim().slice(0, 80);
 
-    if (role === 'host' && hostKey !== HOST_KEY) {
-      socket.emit('auth:error', { message: 'Host anahtarı hatalı.' });
+    if (role === 'viewer' && !viewerName) {
+      socket.emit('join:error', { message: 'Kullanıcı adı boş bırakılamaz. Kick kullanıcı adınla aynı yazman en iyisi.' });
       return;
+    }
+
+    if (role === 'viewer' && !hasRoom(roomId)) {
+      socket.emit('join:error', { message: 'Bu oda henüz host tarafından açılmadı.' });
+      return;
+    }
+
+    if (role === 'host' && !hostKey) {
+      socket.emit('auth:error', { message: 'Bu oturum için bir host anahtarı belirlemelisin.' });
+      return;
+    }
+
+    const room = getRoom(roomId);
+
+    if (role === 'host') {
+      if (!room.hostKey) {
+        room.hostKey = hostKey;
+      } else if (room.hostKey !== hostKey) {
+        socket.emit('auth:error', { message: 'Bu oda başka bir host anahtarı ile kilitli.' });
+        return;
+      }
     }
 
     socket.data.roomId = roomId;
     socket.data.role = role;
     socket.data.viewerName = viewerName;
     socket.join(`room:${roomId}`);
+    socket.emit('room:joined', { roomId, role, viewerName });
     emitRoomState(roomId);
   });
 
@@ -184,12 +218,12 @@ io.on('connection', socket => {
     room.pendingClaim = {
       tileId,
       tileLabel: tile.label,
-      viewerName: socket.data.viewerName || 'İzleyici',
+      viewerName: socket.data.viewerName,
       viewerSocketId: socket.id,
       createdAt: Date.now(),
       expiresAt: Date.now() + CLAIM_TTL_MS
     };
-    room.history.push({
+    pushHistory(room, {
       type: 'claim',
       tileId,
       tileLabel: tile.label,
@@ -205,7 +239,7 @@ io.on('connection', socket => {
     if (!roomId || socket.data.role !== 'viewer') return;
     const room = getRoom(roomId);
     if (!room.pendingClaim || room.pendingClaim.viewerSocketId !== socket.id) return;
-    room.history.push({
+    pushHistory(room, {
       type: 'cancelled',
       tileId: room.pendingClaim.tileId,
       tileLabel: room.pendingClaim.tileLabel,
@@ -234,14 +268,42 @@ io.on('connection', socket => {
       return;
     }
 
+    const beforeWinningCount = getWinningLines(room.confirmedTiles).length;
+    const claimant = room.pendingClaim;
+
     room.confirmedTiles.push(tileId);
-    room.history.push({
+    pushHistory(room, {
       type: 'confirmed',
       tileId,
       tileLabel: tile.label,
-      viewerName: room.pendingClaim.viewerName,
+      viewerName: claimant.viewerName,
       at: Date.now()
     });
+
+    const afterWinningCount = getWinningLines(room.confirmedTiles).length;
+    if (afterWinningCount > beforeWinningCount) {
+      const event = {
+        rank: room.bingoEvents.length + 1,
+        viewerName: claimant.viewerName,
+        tileId,
+        tileLabel: tile.label,
+        at: Date.now(),
+        totalLines: afterWinningCount,
+        newLines: afterWinningCount - beforeWinningCount
+      };
+      room.bingoEvents.push(event);
+      pushHistory(room, {
+        type: 'bingo',
+        tileId,
+        tileLabel: tile.label,
+        viewerName: claimant.viewerName,
+        at: event.at,
+        rank: event.rank
+      });
+      io.to(claimant.viewerSocketId).emit('viewer:bingoRank', event);
+      io.to(`room:${roomId}`).emit('room:bingoEvent', event);
+    }
+
     room.pendingClaim = null;
     room.updatedAt = Date.now();
     emitRoomState(roomId);
@@ -252,7 +314,7 @@ io.on('connection', socket => {
     if (!roomId || socket.data.role !== 'host') return;
     const room = getRoom(roomId);
     if (!room.pendingClaim) return;
-    room.history.push({
+    pushHistory(room, {
       type: 'rejected',
       tileId: room.pendingClaim.tileId,
       tileLabel: room.pendingClaim.tileLabel,
@@ -267,7 +329,10 @@ io.on('connection', socket => {
   socket.on('host:resetRoom', () => {
     const roomId = socket.data.roomId;
     if (!roomId || socket.data.role !== 'host') return;
-    rooms.set(roomId, createRoomState(roomId));
+    const previous = getRoom(roomId);
+    const reset = createRoomState(roomId);
+    reset.hostKey = previous.hostKey;
+    rooms.set(roomId, reset);
     emitRoomState(roomId);
   });
 
@@ -276,7 +341,7 @@ io.on('connection', socket => {
     if (!roomId) return;
     const room = getRoom(roomId);
     if (room.pendingClaim?.viewerSocketId === socket.id) {
-      room.history.push({
+      pushHistory(room, {
         type: 'disconnect',
         tileId: room.pendingClaim.tileId,
         tileLabel: room.pendingClaim.tileLabel,
