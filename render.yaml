@@ -1,0 +1,13 @@
+services:
+  - type: web
+    name: eren-bingo
+    env: node
+    plan: free
+    buildCommand: npm install
+    startCommand: npm start
+    autoDeploy: true
+    envVars:
+      - key: DEFAULT_ROOM
+        value: anaoda
+      - key: CLAIM_TTL_MS
+        value: 10000
