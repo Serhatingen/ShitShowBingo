@@ -75,6 +75,11 @@ function setupRefs() {
   elements.spotlightSubtitle = $('spotlightSubtitle');
   elements.spotlightMeta = $('spotlightMeta');
   elements.spotlightConfetti = $('spotlightConfetti');
+  elements.radarOnline = $('radarOnline');
+  elements.radarClaims = $('radarClaims');
+  elements.radarOneAway = $('radarOneAway');
+  elements.radarHotTiles = $('radarHotTiles');
+  elements.radarNearLines = $('radarNearLines');
 }
 
 

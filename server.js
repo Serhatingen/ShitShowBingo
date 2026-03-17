@@ -84,6 +84,46 @@ function getWinningLines(confirmedTiles) {
   return lines.filter(line => line.every(tileId => set.has(tileId)));
 }
 
+
+function buildRadar(room) {
+  const confirmedSet = new Set(room.confirmedTiles);
+  const tileLabelMap = Object.fromEntries(tiles.map(tile => [tile.id, tile.label]));
+
+  const hotTiles = tiles
+    .map(tile => ({
+      id: tile.id,
+      label: tile.label,
+      count: room.tileClaims[tile.id] || 0,
+      confirmed: confirmedSet.has(tile.id)
+    }))
+    .filter(tile => tile.count > 0 || tile.confirmed)
+    .sort((a, b) => {
+      if (b.count !== a.count) return b.count - a.count;
+      if (a.confirmed !== b.confirmed) return Number(b.confirmed) - Number(a.confirmed);
+      return a.label.localeCompare(b.label, 'tr');
+    })
+    .slice(0, 5);
+
+  const oneAwayLines = lines
+    .map(line => {
+      const missing = line.filter(tileId => !confirmedSet.has(tileId));
+      if (missing.length !== 1) return null;
+      return {
+        missingTileId: missing[0],
+        missingLabel: tileLabelMap[missing[0]] || missing[0],
+        lineLabels: line.map(tileId => tileLabelMap[tileId] || tileId)
+      };
+    })
+    .filter(Boolean);
+
+  return {
+    onlineViewers: room.viewerNames.size,
+    totalClaims: Object.values(room.tileClaims).reduce((sum, value) => sum + value, 0),
+    hotTiles,
+    oneAwayLines
+  };
+}
+
 function roomSnapshot(room) {
   const now = Date.now();
   let pending = null;
