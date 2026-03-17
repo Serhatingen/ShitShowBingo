@@ -10,6 +10,9 @@ let lastJoinPayload = null;
 let roomJoined = false;
 let myLatestRank = null;
 let spotlightTimeout = null;
+let lastSeenHostSpotlightRank = 0;
+let lastSeenViewerSpotlightRank = 0;
+let heartbeatInterval = null;
 
 const NAME_STORAGE_KEY = 'erenBingoViewerName';
 const ROOM_STORAGE_KEY = 'erenBingoRoom';
@@ -193,7 +196,7 @@ async function copyViewerLink() {
   }
 }
 function getIdleStatusText() {
-  return mode === 'host' ? 'Henüz bingo bağlantısı kurulmadı' : 'Henüz odaya bağlanılmadı';
+  return mode === 'host' ? 'Henüz oda oluşturulmadı' : 'Henüz odaya bağlanılmadı';
 }
 
 function updateJoinButton(isOnline) {
@@ -202,7 +205,7 @@ function updateJoinButton(isOnline) {
     elements.joinBtn.textContent = mode === 'host' ? 'Bingo bağlı' : 'Odaya bağlanıldı (Online)';
     elements.joinBtn.classList.add('online');
   } else {
-    elements.joinBtn.textContent = mode === 'host' ? 'Bingo linki oluştur' : 'Odaya bağlan';
+    elements.joinBtn.textContent = mode === 'host' ? 'Odayı oluştur' : 'Odaya bağlan';
     elements.joinBtn.classList.remove('online');
   }
 }
@@ -368,6 +371,38 @@ function syncMyRank(bingoEvents) {
   elements.myRankBox.textContent = `Şu ana kadarki bingo sıran: #${rank.rank} · ${formatClock(rank.at)}`;
 }
 
+function syncSpotlightsFromState(state) {
+  const events = state?.bingoEvents || [];
+  if (!events.length) return;
+
+  if (mode === 'host') {
+    const unseen = events.filter(event => event.rank <= 3 && event.rank > lastSeenHostSpotlightRank);
+    if (unseen.length) {
+      const latest = unseen[unseen.length - 1];
+      lastSeenHostSpotlightRank = latest.rank;
+      triggerSpotlight(latest, { viewerMode: false });
+    }
+    return;
+  }
+
+  const myName = getViewerName();
+  if (!myName) return;
+  const unseenMine = events.filter(event => event.viewerName === myName && event.rank <= 3 && event.rank > lastSeenViewerSpotlightRank);
+  if (unseenMine.length) {
+    const latest = unseenMine[unseenMine.length - 1];
+    lastSeenViewerSpotlightRank = latest.rank;
+    triggerSpotlight(latest, { viewerMode: true });
+  }
+}
+
+function startHeartbeat() {
+  clearInterval(heartbeatInterval);
+  if (!roomJoined) return;
+  heartbeatInterval = setInterval(() => {
+    if (socket.connected && roomJoined) socket.emit('heartbeat');
+  }, 240000);
+}
+
 
 function renderRadar(radar) {
   if (!elements.radarOnline) return;
@@ -519,6 +554,7 @@ function bindEvents() {
 
   socket.on('disconnect', () => {
     roomJoined = false;
+    clearInterval(heartbeatInterval);
     updateJoinButton(false);
   updateCopyLinkUi();
     if (elements.statusBadge) {
@@ -529,6 +565,7 @@ function bindEvents() {
 
   socket.on('room:joined', payload => {
     roomJoined = true;
+    startHeartbeat();
     updateJoinButton(true);
     if (mode === 'viewer' && payload.viewerName && elements.viewerName) {
       elements.viewerName.value = payload.viewerName;
@@ -544,10 +581,12 @@ function bindEvents() {
     currentState = state;
     updateBoard(state);
     renderSidebar(state);
+    syncSpotlightsFromState(state);
   });
 
   socket.on('viewer:bingoRank', event => {
     myLatestRank = event;
+    if (event.rank <= 3) lastSeenViewerSpotlightRank = Math.max(lastSeenViewerSpotlightRank, event.rank);
     if (event.rank <= 3) {
       triggerSpotlight(event, { viewerMode: true });
     } else {
@@ -558,12 +597,14 @@ function bindEvents() {
 
   socket.on('room:bingoEvent', event => {
     if (mode === 'host' && event.rank <= 3) {
+      lastSeenHostSpotlightRank = Math.max(lastSeenHostSpotlightRank, event.rank);
       triggerSpotlight(event, { viewerMode: false });
     }
   });
 
   socket.on('auth:error', payload => {
     roomJoined = false;
+    clearInterval(heartbeatInterval);
     updateJoinButton(false);
   updateCopyLinkUi();
     alert(payload.message || 'Host girişi başarısız.');
@@ -571,6 +612,7 @@ function bindEvents() {
 
   socket.on('join:error', payload => {
     roomJoined = false;
+    clearInterval(heartbeatInterval);
     updateJoinButton(false);
   updateCopyLinkUi();
     toast(payload.message || 'Odaya girilemedi.');

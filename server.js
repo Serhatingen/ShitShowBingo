@@ -159,6 +159,11 @@ app.get('*', (_req, res) => {
 });
 
 io.on('connection', socket => {
+
+  socket.on('heartbeat', () => {
+    socket.emit('heartbeat:ack', { ok: true, at: Date.now() });
+  });
+
   socket.on('room:join', payload => {
     const roomId = normalizeRoom(payload?.room);
     const role = payload?.role === 'host' ? 'host' : 'viewer';

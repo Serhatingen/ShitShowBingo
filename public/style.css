@@ -24,14 +24,14 @@ body.centered {
   justify-content: center;
 }
 #app {
-  width: min(100%, 1428px);
+  width: min(100%, 1600px);
   min-height: 100vh;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(300px, 360px);
+  grid-template-columns: minmax(0, 1fr) minmax(320px, 380px);
   justify-content: center;
   align-items: start;
-  gap: 18px;
-  padding: 18px;
+  gap: clamp(12px, 1.6vw, 18px);
+  padding: clamp(10px, 1.6vw, 18px);
 }
 .board-wrap {
   width: 100%;
@@ -42,6 +42,7 @@ body.centered {
 .board-shell {
   position: relative;
   width: min(100%, 1032px);
+  max-width: 1032px;
   aspect-ratio: 1032 / 686;
   overflow: hidden;
   background: #000;
@@ -96,6 +97,8 @@ body.centered {
   display: flex;
   flex-direction: column;
   gap: 14px;
+  position: sticky;
+  top: 12px;
 }
 .panel {
   background: var(--panel);
@@ -368,9 +371,13 @@ button:disabled { opacity: 0.5; cursor: not-allowed; }
   }
   .sidebar {
     width: min(100%, 1032px);
+    position: static;
   }
 }
 @media (max-width: 768px) {
+  body.centered {
+    align-items: flex-start;
+  }
   #app {
     gap: 14px;
     padding: 12px;
@@ -378,6 +385,9 @@ button:disabled { opacity: 0.5; cursor: not-allowed; }
   .panel {
     padding: 12px;
     border-radius: 12px;
+  }
+  .inline > * {
+    flex: 1 1 100%;
   }
   .tile.pending::after,
   .tile.confirmed::after {
@@ -396,6 +406,7 @@ button:disabled { opacity: 0.5; cursor: not-allowed; }
     gap: 10px;
   }
   .board-shell {
+    width: 100%;
     border-radius: 10px;
   }
   .status-row {
@@ -404,6 +415,8 @@ button:disabled { opacity: 0.5; cursor: not-allowed; }
   .badge {
     font-size: 11px;
   }
+  .panel h2 { font-size: 28px; }
+  .panel h3 { font-size: 24px; }
   .bingo-list li {
     grid-template-columns: 36px 1fr;
     gap: 8px;
