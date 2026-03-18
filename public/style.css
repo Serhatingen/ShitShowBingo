@@ -51,7 +51,7 @@ body.centered {
 }
 .board-grid {
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-columns: 22.8682% 17.9264% 18.1202% 17.9264% 23.1589%;
   grid-template-rows: 16.7638% 26.6764% 27.1137% 29.4461%;
   width: 100%;
   height: 100%;
@@ -81,17 +81,29 @@ body.centered {
 .tile.confirmed::after {
   content: '';
   position: absolute;
-  inset: 0;
   pointer-events: none;
+  inset: 3px;
+  box-sizing: border-box;
 }
+
 .tile.pending::after {
-  outline: 4px solid rgba(255, 203, 69, 0.88);
-  outline-offset: -4px;
+  border: 4px solid rgba(255, 203, 69, 0.88);
 }
+
 .tile.confirmed::after {
-  outline: 4px solid rgba(64, 217, 122, 0.84);
-  outline-offset: -4px;
+  border: 4px solid rgba(64, 217, 122, 0.84);
 }
+
+.board-grid > :nth-child(5n + 1).pending::after,
+.board-grid > :nth-child(5n + 1).confirmed::after {
+  inset: 3px 3px 3px 8px;
+}
+
+.board-grid > :nth-child(5n).pending::after,
+.board-grid > :nth-child(5n).confirmed::after {
+  inset: 3px 8px 3px 3px;
+}
+
 .tile:disabled { opacity: 1; }
 .sidebar {
   width: 100%;
@@ -392,8 +404,7 @@ button:disabled { opacity: 0.5; cursor: not-allowed; }
   }
   .tile.pending::after,
   .tile.confirmed::after {
-    outline-width: 3px;
-    outline-offset: -3px;
+    border-width: 3px;
   }
   .history-list,
   .bingo-list {
