@@ -51,7 +51,7 @@ body.centered {
 }
 .board-grid {
   display: grid;
-  grid-template-columns: 22.8682% 17.9264% 18.1202% 17.9264% 23.1589%;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   grid-template-rows: 16.7638% 26.6764% 27.1137% 29.4461%;
   width: 100%;
   height: 100%;
@@ -64,6 +64,7 @@ body.centered {
   position: relative;
   cursor: default;
   -webkit-tap-highlight-color: transparent;
+  overflow: hidden;
 }
 .tile img,
 .header-tile img {
