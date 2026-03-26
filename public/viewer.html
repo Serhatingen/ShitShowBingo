@@ -1,83 +1,92 @@
 <!doctype html>
 <html lang="tr">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Eren Bingo - İzleyici</title>
-  <link rel="stylesheet" href="/style.css">
-</head>
-<body class="centered" data-mode="viewer">
-  <div id="app">
-    <div class="board-wrap">
-      <div class="board-shell">
-        <div id="boardGrid" class="board-grid"></div>
-      </div>
-    </div>
-    <aside class="sidebar">
-      <section class="panel stack">
-        <h2>İzleyici Paneli</h2>
-        <div class="status-row">
-          <span class="badge warn" id="statusBadge">Henüz odaya bağlanılmadı</span>
-          <span class="badge">Oda: <strong id="roomCode">-</strong></span>
-        </div>
-        <label class="stack">
-          <span class="small">Oda kodu</span>
-          <input id="roomInput" type="text" placeholder="anaoda">
-        </label>
-        <label class="stack">
-          <span class="small">Kullanıcı adı <span class="muted-inline">(Kick kullanıcı adınla aynı olması iyi olur)</span></span>
-          <input id="viewerName" type="text" maxlength="30" placeholder="Kick kullanıcı adın">
-        </label>
-        <button id="joinBtn" class="join-btn">Odaya bağlan</button>
-      </section>
-
-      <section class="panel stack">
-        <div class="status-row"><h3>Durum</h3><span class="badge">Onaylı kutu: <strong id="confirmedCount">0</strong></span></div>
-        <div class="status-row"><span class="small">Tamamlanan çizgi</span><strong id="linesCount">0</strong></div>
-        <div id="bingoBanner" class="bingo-banner" style="display:none"></div>
-        <div id="myRankBox" class="rank-box" style="display:none"></div>
-      </section>
-
-      <section class="panel stack">
-        <h3>Bekleyen claim</h3>
-        <div id="pendingBox"></div>
-      </section>
-
-      <section class="panel stack">
-        <h3>İlk 10 bingo</h3>
-        <ol id="bingoList" class="bingo-list"></ol>
-      </section>
-
-      <section class="panel stack">
-        <h3>Son hareketler</h3>
-        <ul id="historyList" class="history-list"></ul>
-      </section>
-    </aside>
-  </div>
-
-  <div id="claimModal" class="modal" aria-hidden="true">
-    <div class="modal-card stack">
-      <h3 id="modalTitle">Onay bekleniyor</h3>
-      <p id="modalText" class="small"></p>
-      <div class="progress"><div id="progressBar" class="progress-bar"></div></div>
-      <div class="inline">
-        <button id="modalClose" class="secondary">Kapat</button>
-        <button id="modalCancel" class="warn">Claim iptal</button>
-      </div>
-    </div>
-  </div>
-
-  <div id="spotlightOverlay" class="spotlight-overlay" aria-hidden="true">
-    <div id="spotlightConfetti" class="confetti-layer" aria-hidden="true"></div>
-    <div class="spotlight-card">
-      <div id="spotlightTitle" class="spotlight-title">BİNGO ANI</div>
-      <div id="spotlightSubtitle" class="spotlight-subtitle"></div>
-      <div id="spotlightMeta" class="spotlight-meta"></div>
-    </div>
-  </div>
-
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ShitShow Bingo</title>
+  <link rel="stylesheet" href="/style.css" />
   <script src="/socket.io/socket.io.js"></script>
   <script src="/config.js"></script>
-  <script src="/app.js"></script>
+  <script defer src="/client.js"></script>
+</head>
+<body data-page="viewer">
+  <div class="shell">
+    <header class="topbar">
+      <div class="brand">
+        <div class="brand-kicker">VIEWER</div>
+        <h1>ShitShow Bingo</h1>
+      </div>
+
+      <div class="topbar-right">
+        <div id="connectionBadge" class="badge badge-offline">Bağlanıyor…</div>
+        <div id="viewerJoinBadge" class="badge">Katılmadın</div>
+      </div>
+    </header>
+
+    <main class="layout">
+      <section class="panel">
+        <div class="panel-header">
+          <h2>Odaya Katıl</h2>
+        </div>
+
+        <form id="viewerForm" class="stack gap-12">
+          <div class="field-row">
+            <label class="field">
+              <span>Oda adı</span>
+              <input id="viewerRoomInput" type="text" placeholder="anaoda" autocomplete="off" />
+            </label>
+
+            <label class="field">
+              <span>İsmin</span>
+              <input id="viewerNameInput" type="text" placeholder="Serhat" autocomplete="off" />
+            </label>
+          </div>
+
+          <div class="actions">
+            <button id="viewerJoinBtn" type="submit" class="btn btn-primary">Katıl</button>
+            <button id="bingoBtn" type="button" class="btn btn-gold" disabled>Bingo Bildir</button>
+          </div>
+
+          <div id="viewerMessage" class="message"></div>
+        </form>
+
+        <div class="stats">
+          <div class="stat-card">
+            <div class="stat-label">Oda</div>
+            <div id="viewerStatRoom" class="stat-value">-</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Online</div>
+            <div id="viewerStatOnline" class="stat-value">0</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Onaylı</div>
+            <div id="viewerStatConfirmed" class="stat-value">0</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Tamamlanan Satır</div>
+            <div id="viewerStatLines" class="stat-value">0</div>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel panel-span-2">
+        <div class="panel-header">
+          <h2>Bingo Kartı</h2>
+          <div class="subtle">Sen işaretle, host onaylasın</div>
+        </div>
+        <div id="viewerGrid" class="bingo-grid"></div>
+      </section>
+
+      <section class="panel panel-span-2">
+        <div class="panel-header">
+          <h2>İlk Bingo Yapanlar</h2>
+        </div>
+        <div id="winnersList" class="winners-list empty-state">Henüz bingo yok.</div>
+      </section>
+    </main>
+  </div>
+
+  <div id="toast" class="toast"></div>
 </body>
 </html>
